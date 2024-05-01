@@ -1,0 +1,14 @@
+{
+    "module": [{
+            "name": "buf1x",
+            "output" : [{ "name": "z", "inverting": "no"}],
+            "input" : [ {"name": "a", "C": 0.5, "R": 2.0, "intrinsic_delay": 4.0}]
+        }
+    ],
+    "technology": {
+        "unit_wire_resistance": 0.05,
+        "unit_wire_resistance_comment0": "KOhm/um",
+        "unit_wire_capacitance": 0.3,
+        "unit_wire_capacitance_comment0": "fF/um"
+    }
+}

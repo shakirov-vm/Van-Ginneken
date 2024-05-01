@@ -1,0 +1,12 @@
+{
+	"node": [
+		{ "id": 0, "x": 15, "y": 1, "type": "s", "name": "sp0" },
+		{ "id": 1, "x": 0, "y": 0, "type": "t", "name": "z0", "capacitance": 1.5, "rat": 200.0 },
+		{ "id": 2, "x": 15, "y": 1, "type": "t", "name": "z1", "capacitance": 1.5, "rat": 800.0 },
+		{ "id": 3, "x": 15, "y": 50, "type": "b", "name": "buf1x" } ],
+	"edge": [
+		{ "id": 0, "vertices": [ 0, 1], "segments": [ [15,1], [0,1] , [0,0] ] },
+		{ "id": 1, "vertices": [ 0,2], "segments": [ [15,1], [15,1] ] },
+		{ "id": 2, "vertices": [ 3,0], "segments": [ [15,50], [15,1] ] }
+	]
+}
