@@ -12,7 +12,10 @@ class SteinerNode:
 		self.path_to_parent = path_to_parent
 		self.childs = []
 
+		# maybe one class?
 		self.options_to_parent = []
+		self.num_option_from_child = []
+
 		self.options_from_merge = []
 
 		if not parent_node == None:
@@ -95,15 +98,16 @@ def calc_branch(node: SteinerNode, params: SchemParams, curr_solutions: [ParamSo
 
 	wire_len = get_wire_len(node.path_to_parent)
 
-	print("wire_len:", wire_len)
-	print(*curr_solutions)
-	print(node)
+#	print("wire_len:", wire_len)
+#	print(*curr_solutions)
+#	print(node)
 
 	init_size = len(curr_solutions)
 	edge_solutions = [[]] * init_size
+	edge_indexes = [i for i in range(len(curr_solutions))]
 
-	print("init size: ", init_size)
-	print(edge_solutions)
+#	print("init size: ", init_size)
+#	print(edge_solutions)
 
 	# [start; finish); start from terminals
 	for i in range(wire_len): # or + 1 for s == t?
@@ -121,68 +125,93 @@ def calc_branch(node: SteinerNode, params: SchemParams, curr_solutions: [ParamSo
 
 			edge_solutions[j].append(0)
 
-			# <= ? Or >=?
-			if cs.Q - get_buff_delay(params, cs.C) <= cs_best_to_buf.Q - get_buff_delay(params, cs_best_to_buf.C):
+			# <= ? Or >=? # ОЧЕНЬ ВАЖНЫЙ ВОПРОС!!
+			if cs.Q - get_buff_delay(params, cs.C) >= cs_best_to_buf.Q - get_buff_delay(params, cs_best_to_buf.C):
 				cs_best_to_buf = cs
 				cs_index = j
 
 		if cs_index < 0:
 			print("OH NO CS INDEX < 0!!!")
 
-		edge_solutions.append(edge_solutions[cs_index])
+		edge_solutions.append(edge_solutions[cs_index]) # Is it copy?
 		edge_solutions[-1][-1] = 1 # Буффер есть
+
+		# ЭТО КОРРЕКТНО?
+		print("cs_index: ", cs_index)
+		edge_indexes.append(edge_indexes[cs_index])
 
 		cs_buf = ParamSolution(params.C_b, cs_best_to_buf.Q - get_buff_delay(params, cs_best_to_buf.C), 0)
 		curr_solutions.append(cs_buf)
 
 	print("edge solutions:", len(edge_solutions))
+	print("indexes:", len(edge_indexes))
 #	print("edge solutions:", edge_solutions)
+#	print(*curr_solutions)
 
 	node.options_to_parent = edge_solutions
+	node.num_option_from_child = edge_indexes
+	print(node.num_option_from_child)
 
 	return curr_solutions
 
-def merge_childs(childs_CQ_params_arr, params: SchemParams, num_of_childs):
+def merge_childs(childs_CQ_params_arr, params: SchemParams, node: SteinerNode):
+
+	num_of_childs = len(node.childs)
 
 	solutions = []
 
+	print("\n")
+	print("num_of_childs: ", num_of_childs)
+
 	solution_index = 0
-	curr_target_child_index = 0
-	for child_CQ_params_arr in childs_CQ_params_arr:
+	
+	for curr_target_child_index in range(len(childs_CQ_params_arr)):
+		target_CQ_params_arr = childs_CQ_params_arr[curr_target_child_index]
 
-		curr_CQ_param_index = 0
-		for child_CQ_param in child_CQ_params_arr:
+		for curr_CQ_param_index in range(len(target_CQ_params_arr)):
+			target_CQ_param = target_CQ_params_arr[curr_CQ_param_index]
 
-			curr_C = curr_solution.C
-			curr_Q = child_CQ_param.Q
+			have_solution = True
 
-			solution_ways = [None] * len(num_of_childs)
+			curr_C = target_CQ_param.C
+			curr_Q = target_CQ_param.Q
+
+			solution_ways = [int] * num_of_childs
 			solution_ways[curr_target_child_index] = curr_CQ_param_index
 			
-			curr_other_child_index = 0
-			for other_CQ_params_arr in childs_CQ_params_arr:
+			max_prev_wirelen = target_CQ_param.curr_wirelen
+
+			for curr_other_child_index in range(len(childs_CQ_params_arr)):
+				other_CQ_params_arr = childs_CQ_params_arr[curr_other_child_index]
+
 				# Very slow? need compare id's?
-				if other_CQ_params_arr == child_CQ_params_arr:
+				if other_CQ_params_arr == target_CQ_params_arr:
 					continue
 
 				C_more_than_Q = [CQ_param.C for CQ_param in other_CQ_params_arr if CQ_param.Q >= curr_Q]
 
-				if len(more_than_Q) == 0:
-					break # twice up - break
+				if len(C_more_than_Q) == 0:
+					have_solution = False
+					break # twice-up-break
 
 				min_index = C_more_than_Q.index(min(C_more_than_Q))
 				curr_C += C_more_than_Q[min_index]
-			
-				solution_ways[curr_other_child_index] = min_index	
-				curr_other_child_index += 1
-			
-			solutions.append(ParamSolution(curr_C, curr_Q, 0)) # !!! может быть здесь верно выбирать больший или меньший
-			
+				# maybe min?
+				max_prev_wirelen = max(max_prev_wirelen, other_CQ_params_arr[min_index].curr_wirelen)
+
+				solution_ways[curr_other_child_index] = min_index
+
+			if not have_solution:
+				continue
+
+			solutions.append(ParamSolution(curr_C, curr_Q, max_prev_wirelen))
+
+			print("in node", node.json["id"], "on index", solution_index, ":", solution_ways)
 			node.options_from_merge.append(solution_ways) # must be solution_index
 
 			solution_index += 1
-			curr_CQ_param_index += 1
-		curr_target_child_index += 1
+
+	print(node.options_from_merge)
 
 	if len(solutions) != solution_index:
 		print("\nPANIC solution size don't equal solution index\n")
@@ -198,8 +227,9 @@ def bottom_up_order(node: SteinerNode, tech_params: SchemParams):
 	for child in node.childs:
 		solutions.append(calc_branch(child, tech_params, bottom_up_order(child, tech_params)))
 
-	solved = merge_childs(solutions, tech_params, len(node.childs))
-	print(solved)
+	solved = merge_childs(solutions, tech_params, node)
+	#print(*solved)
+	print("from node", node.json["id"], ", solutions:", len(solved))
 
 	return solved
 
@@ -209,28 +239,30 @@ def get_buffer_coords(node: SteinerNode, index):
 
 	num_segments = len(edges)
 
+	# first index - edge num, second index - x {0} or y {1}
+
 	# can be optimized
 	if num_segments == 2:
-		if edges[0].x == edges[1].x:
-			return [edges[0].x, edges[0].y + index]
+		if edges[0][0] == edges[1][0]:
+			return [edges[0][0], edges[0][1] + index]
 		else:
-			return [edges[0].x + index, edges[0].y]
+			return [edges[0][0] + index, edges[0][1]]
 
 	if num_segments == 3:
 
 		# maybe <?
-		if index <= abs(edges[0].x - edges[1].x + edges[0].y - edges[1].y):
+		if index <= abs(edges[0][0] - edges[1][0] + edges[0][1] - edges[1][1]):
 
-			if edges[0].x == edges[1].x:
-				return [edges[0].x, edges[0].y + index]
+			if edges[0][0] == edges[1][0]:
+				return [edges[0][0], edges[0][1] + index]
 			else:
-				return [edges[0].x + index, edges[0].y]
+				return [edges[0][0] + index, edges[0][1]]
 		else:
-			index -= abs(edges[0].x - edges[1].x + edges[0].y - edges[1].y)
-			if edges[1].x == edges[2].x:
-				return [edges[1].x, edges[1].y + index]
+			index -= abs(edges[0][0] - edges[1][0] + edges[0][1] - edges[1][1])
+			if edges[1][0] == edges[2][0]:
+				return [edges[1][0], edges[1][1] + index]
 			else:
-				return [edges[1].x + index, edges[1].y]
+				return [edges[1][0] + index, edges[1][1]]
 
 def get_curr_edge_buffers(node: SteinerNode, solution_id):
 
@@ -238,6 +270,7 @@ def get_curr_edge_buffers(node: SteinerNode, solution_id):
 
 	wire_len = get_wire_len(node.path_to_parent)
 
+	print("sol id : ", solution_id)
 	# Check start and end
 	for i in range(wire_len):
 		if node.options_to_parent[solution_id][i] == 1:
@@ -245,10 +278,11 @@ def get_curr_edge_buffers(node: SteinerNode, solution_id):
 
 	return buffers
 
-def get_curr_edge_split(node: SteinerNode, buffers_coords):
+def get_curr_edge_split(node: SteinerNode, buffers_places):
 
-	buffers_places = node.options_to_parent[solution_id]
 	new_vertices = [node.path_to_parent[0]]
+
+	# there too first index - edge num, second index - x {0} or y {1}
 
 	segments = node.path_to_parent
 	num_segments = len(segments)
@@ -258,61 +292,61 @@ def get_curr_edge_split(node: SteinerNode, buffers_coords):
 	if num_segments == 2:
 		
 		curr_len = 0
-		if segments[0].x == segments[1].x:
+		if segments[0][0] == segments[1][0]:
 			for i in range(wire_len):
 				# TODO ???
 				if buffers_places[i] == 1:
-					new_vertices.append([segments[0].x, segments[0].y + curr_len])
+					new_vertices.append([segments[0][0], segments[0][1] + curr_len])
 					curr_len = 0
 				curr_len += 1
 		else:
 			for i in range(wire_len):
 				# TODO ???
 				if buffers_places[i] == 1:
-					new_vertices.append([segments[0].x + curr_len, segments[0].y])
+					new_vertices.append([segments[0][0] + curr_len, segments[0][1]])
 					curr_len = 0
 				curr_len += 1
 		# Or it will be there??
-		new_vertices.append([segments[1].x, segments[1].y])
+		new_vertices.append([segments[1][0], segments[1][1]])
 
 	else:
 		curr_len = 0
-		first_segment_len = abs(segments[0].x - segments[1].x + segments[0].y - segments[1].y)
-		if segments[0].x == segments[1].x:
+		first_segment_len = abs(segments[0][0] - segments[1][0] + segments[0][1] - segments[1][1])
+		if segments[0][0] == segments[1][0]:
 			for i in range(first_segment_len):
 				# TODO ???
 				if buffers_places[i] == 1:
-					new_vertices.append([segments[0].x, segments[0].y + curr_len])
+					new_vertices.append([segments[0][0], segments[0][1] + curr_len])
 					curr_len = 0
 				curr_len += 1
 		else:
 			for i in range(first_segment_len):
 				# TODO ???
 				if buffers_places[i] == 1:
-					new_vertices.append([segments[0].x + curr_len, segments[0].y])
+					new_vertices.append([segments[0][0] + curr_len, segments[0][1]])
 					curr_len = 0
 				curr_len += 1
 		# Or it will be there??
-		new_vertices.append([segments[1].x, segments[1].y])
+		new_vertices.append([segments[1][0], segments[1][1]])
 
 		curr_len = 0
-		second_segment_len = abs(segments[2].x - segments[1].x + segments[2].y - segments[1].y)
-		if segments[0].x == segments[1].x:
+		second_segment_len = abs(segments[2][0] - segments[1][0] + segments[2][1] - segments[1][1])
+		if segments[0][0] == segments[1][0]:
 			for i in range(first_segment_len, second_segment_len):
 				# TODO ???
 				if buffers_places[i] == 1:
-					new_vertices.append([segments[0].x, segments[0].y + curr_len])
+					new_vertices.append([segments[0][0], segments[0][1] + curr_len])
 					curr_len = 0
 				curr_len += 1
 		else:
 			for i in range(first_segment_len, second_segment_len):
 				# TODO ???
 				if buffers_places[i] == 1:
-					new_vertices.append([segments[0].x + curr_len, segments[0].y])
+					new_vertices.append([segments[0][0] + curr_len, segments[0][1]])
 					curr_len = 0
 				curr_len += 1
 		# Or it will be there??
-		new_vertices.append([segments[1].x, segments[1].y])
+		new_vertices.append([segments[1][0], segments[1][1]])
 
 	return new_vertices
 
@@ -325,15 +359,44 @@ class EdgeBufferAndSplit:
 
 def get_solution_buffers(node: SteinerNode, solution_id, buffers_and_edges):
 
+	print("node:", node)
+	print("sol id in start:", solution_id)
+
+	if node.json["type"] == "t":
+		return
+
+	print("options from merge:")
+	print(node.options_from_merge)
+	# get option from curr node-child edge index in 
+
+	indexes_in_childs_edges = node.options_from_merge[solution_id]
+
+	print("node have", len(node.childs), "childs")
+
 	for i in range(len(node.childs)):
-		subtree_sol_id = node.options_from_merge[i]
+		# choose solution the child
+		print(i, ": full len", len(node.options_from_merge))
+
+		print(indexes_in_childs_edges)
+#		print(node.childs[i].options_to_parent)
+		child_sol_id = indexes_in_childs_edges[i]
+		print(i, ": child id", child_sol_id)
+		print(node.childs[i].num_option_from_child)
+		# НУЖНО ДОБАВИТЬ ДЛЯ CHILD-ТЕРМИНАЛА ВОЗМОЖНОСТЬ КОРРЕКТНО ОТДАВАТЬ СОЛЮШН АЙДИ
+		subtree_sol_id = node.childs[i].num_option_from_child[child_sol_id]
+		print(i, ": sol id", subtree_sol_id)
 
 		# buffers ordered from start of edge to end
 		get_solution_buffers(node.childs[i], subtree_sol_id, buffers_and_edges)
 
+	print("node:", node)
+	if node.json["type"] == "b": # good solution?
+		return
+
 	curr_buffers = get_curr_edge_buffers(node, solution_id)
-	buffers_and_edges.buffers.append(curr_buffers)
-	buffers_and_edges.vertices.append(get_curr_edge_split(node, curr_buffers))
+	for buf in curr_buffers:
+		buffers_and_edges.buffers.append(buf)
+	buffers_and_edges.vertices.append(get_curr_edge_split(node, node.options_to_parent[solution_id])) # Not curr buffers?
 
 class SteinerTree:
 
@@ -374,13 +437,44 @@ class SteinerTree:
 			for child in node.childs:
 				q.append(child)
 
+def add_started_nodes(node_array, node):
+
+	node_array.append(node.json)
+
+	print(node.json)
+
+	for child in node.childs:
+		add_started_nodes(node_array, child)
+
+def dump_tree_to_json(tree, buffers, edges, filename):
+	
+	node = [] # "node" in json
+
+	print("start:")
+	add_started_nodes(node, tree.root)
+
+	start_index = len(node)
+
+	print(buffers)
+
+	for i in range(len(buffers)):
+		buffer = buffers[i]
+		buf = {"id": start_index + i, "x": buffer[0], "y": buffer[1], "type": "b", "name": "buf1x"}
+		node.append(buf)
+
+	with open("calculated_" + filename, 'w') as file:
+	    json.dump(node, file, sort_keys = False, indent = 4)
+
 def print_buffers_from_solution(tree: SteinerTree, solution_id):
 
 	root = tree.root
 
 	buffers_and_edges = EdgeBufferAndSplit()
+#	print(*root.options_from_merge)
+#	print("\n\n\n")
+#	print(*root.childs[0].options_from_merge)
 	# Root have only one child
-	get_solution_buffers(root.child[0], buffers_and_edges)
+	get_solution_buffers(root, solution_id, buffers_and_edges)
 
 	return buffers_and_edges.buffers, buffers_and_edges.vertices
 
@@ -398,6 +492,9 @@ if __name__ == "__main__":
 	tech_params = SchemParams(args.technology_filename)
 	params = bottom_up_order(tree.root, tech_params)
 
+	print("root id:", tree.root.json["id"])
+#	print(*params)
+
 	# Get index of max RAT
 	max_index = 0
 	max_RAT = params[0].Q
@@ -410,3 +507,5 @@ if __name__ == "__main__":
 		i += 1
 
 	buffers, edges = print_buffers_from_solution(tree, max_index)
+
+	dump_tree_to_json(tree, buffers, edges, args.test_filename)
