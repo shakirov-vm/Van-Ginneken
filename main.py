@@ -2,6 +2,7 @@ import json
 import argparse
 from collections import deque
 import numpy as np
+from copy import copy
 
 class SteinerNode:
 
@@ -99,17 +100,21 @@ def calc_branch(node: SteinerNode, params: SchemParams, curr_solutions: [ParamSo
 
 	wire_len = get_wire_len(node.path_to_parent)
 
-#	print("wire_len:", wire_len)
-#	print(*curr_solutions)
+	print("wire_len:", wire_len)
+	print("CURR SOLS in calc_branch:")
+	print(*curr_solutions)
 #	print(node)
 
 	init_size = len(curr_solutions)
 	edge_solutions = [[]] * init_size
 	edge_indexes = [i for i in range(len(curr_solutions))]
 
+	print("Start ES:", edge_solutions)
+
 #	print("init size: ", init_size)
 #	print(edge_solutions)
 
+	# need index - from input curr_solutions - for edge_indexes and index for dynamically changed edge_solutions
 	# [start; finish); start from terminals
 	for i in range(wire_len): # or + 1 for s == t?
 
@@ -134,15 +139,18 @@ def calc_branch(node: SteinerNode, params: SchemParams, curr_solutions: [ParamSo
 		if cs_index < 0:
 			print("OH NO CS INDEX < 0!!!")
 
-		edge_solutions.append(edge_solutions[cs_index]) # Is it copy?
-		edge_solutions[-1][-1] = 1 # Буффер есть
+		new_edge_solution = copy(edge_solutions[cs_index])
+		new_edge_solution[-1] = 1
 
-		# ЭТО КОРРЕКТНО?
-		print("cs_index: ", cs_index)
-		edge_indexes.append(edge_indexes[cs_index])
+		edge_solutions.append(new_edge_solution)
+		edge_indexes.append(edge_indexes[cs_index]) # TODO: Is it correct?
 
+		# До сих пор некорректно?
+
+		# TODO IS THERE 0 in the end?
 		cs_buf = ParamSolution(params.C_b, cs_best_to_buf.Q - get_buff_delay(params, cs_best_to_buf.C), 0)
 		curr_solutions.append(cs_buf)
+	print(edge_solutions)
 
 	print("edge solutions:", len(edge_solutions))
 	print("indexes:", len(edge_indexes))
@@ -229,7 +237,7 @@ def bottom_up_order(node: SteinerNode, tech_params: SchemParams):
 		solutions.append(calc_branch(child, tech_params, bottom_up_order(child, tech_params)))
 
 	solved = merge_childs(solutions, tech_params, node)
-	#print(*solved)
+	# print(*solved)
 	print("from node", node.json["id"], ", solutions:", len(solved))
 
 	return solved
@@ -238,7 +246,7 @@ def get_buffer_coords(node: SteinerNode, index):
 
 	edges = node.path_to_parent
 
-	print("edges:", edges)
+#	print("edges:", edges)
 
 	num_segments = len(edges)
 
@@ -282,6 +290,8 @@ def get_curr_edge_buffers(node: SteinerNode, solution_id):
 	wire_len = get_wire_len(node.path_to_parent)
 
 	print("node:", node.json)
+#	solution_id -= 10
+	print("solution_id:", solution_id)
 	# Check start and end
 	for i in range(wire_len):
 		if node.options_to_parent[solution_id][i] == 1:
