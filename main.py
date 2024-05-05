@@ -92,6 +92,14 @@ def get_wire_delay(params: SchemParams, wirelen, C_in):
 
 	return (wirelen ** 2) * params.C_w * params.R_w / 2 + params.R_w * wirelen * (C_in + params.C_w * wirelen)
 
+def get_capac_with_wire(params: SchemParams, CQ_sol: ParamSolution):
+
+	return CQ_sol.C + params.C_w * CQ_sol.curr_wirelen
+
+def get_delay_with_wire(params: SchemParams, CQ_sol: ParamSolution):
+
+	return CQ_sol.Q - get_wire_delay(params, CQ_sol.curr_wirelen, get_capac_with_wire(params, CQ_sol))
+
 def get_buff_delay(params: SchemParams, C_in):
 
 	return params.R_b * C_in + params.D_b
@@ -101,19 +109,16 @@ def calc_branch(node: SteinerNode, params: SchemParams, curr_solutions: [ParamSo
 	wire_len = get_wire_len(node.path_to_parent)
 
 	print("wire_len:", wire_len)
-	print("CURR SOLS in calc_branch:")
+	print("curr solutions in calc_branch:")
 	print(*curr_solutions)
-#	print(node)
 
 	init_size = len(curr_solutions)
 	edge_solutions = [[]] * init_size
 	edge_indexes = [i for i in range(len(curr_solutions))]
 
-	print("Start ES:", edge_solutions)
-
 	# need index - from input curr_solutions - for edge_indexes and index for dynamically changed edge_solutions
 	# [start; finish); start from terminals
-	for i in range(wire_len): # or + 1 for s == t?
+	for i in range(wire_len):
 
 		cs_best_to_buf = curr_solutions[0]
 		cs_index = 0
@@ -125,11 +130,11 @@ def calc_branch(node: SteinerNode, params: SchemParams, curr_solutions: [ParamSo
 			edge_solutions[j].append(0)
 
 			cs.curr_wirelen += 1
-			curr_Q = cs.Q - get_wire_delay(params, cs.curr_wirelen, cs.C)
-			curr_C = cs.C + params.C_w * cs.curr_wirelen
+			curr_Q = get_delay_with_wire(params, cs)
+			curr_C = get_capac_with_wire(params, cs)
 
-			curr_best_Q = cs_best_to_buf.Q - get_wire_delay(params, cs_best_to_buf.curr_wirelen, cs_best_to_buf.C)
-			curr_best_C = cs_best_to_buf.C + params.C_w * cs_best_to_buf.curr_wirelen
+			curr_best_Q = get_delay_with_wire(params, cs_best_to_buf)
+			curr_best_C = get_capac_with_wire(params, cs_best_to_buf)
 
 			bufferized_curr_Q = curr_Q - get_buff_delay(params, curr_C)
 			bufferized_best_Q = curr_best_Q - get_buff_delay(params, curr_best_C)
@@ -139,24 +144,19 @@ def calc_branch(node: SteinerNode, params: SchemParams, curr_solutions: [ParamSo
 				cs_best_to_buf = cs
 				cs_index = j
 
-		print("cs_index:", cs_index)
-
-		if cs_index < 0:
-			print("OH NO CS INDEX < 0!!!")
-
 		new_edge_solution = copy(edge_solutions[cs_index])
 		new_edge_solution[-1] = 1
 
 		edge_solutions.append(new_edge_solution)
-		edge_indexes.append(edge_indexes[cs_index]) # TODO: It is not correct !
+		edge_indexes.append(edge_indexes[cs_index])
 
-		curr_best_Q = cs_best_to_buf.Q - get_wire_delay(params, cs_best_to_buf.curr_wirelen, cs_best_to_buf.C)
-		curr_best_C = cs_best_to_buf.C + params.C_w * cs_best_to_buf.curr_wirelen
+		curr_best_Q = get_delay_with_wire(params, cs_best_to_buf)
+		curr_best_C = get_capac_with_wire(params, cs_best_to_buf) # With wire?
 
 		cs_buf = ParamSolution(params.C_b, curr_best_Q - get_buff_delay(params, curr_best_C), 0)
 		curr_solutions.append(cs_buf)
 
-		# Don't update C and Q on wires because don't null curr_wirelen but in merge?..
+		# Don't update C and Q on wires because don't null curr_wirelen
 
 	print("edge solutions:", len(edge_solutions))
 	print("indexes:", len(edge_indexes))
@@ -168,7 +168,7 @@ def calc_branch(node: SteinerNode, params: SchemParams, curr_solutions: [ParamSo
 				print(j, end = " ")
 		print("")
 
-	print("CURR SOLS after calculation in calc_branch:")
+	print("curr solutions after calculation in calc_branch:")
 	print(*curr_solutions)
 
 	node.options_to_parent = edge_solutions
@@ -196,8 +196,8 @@ def merge_childs(childs_CQ_params_arr, params: SchemParams, node: SteinerNode):
 
 			have_solution = True
 
-			curr_C = target_CQ_param.C
-			curr_Q = target_CQ_param.Q - get_wire_delay(params, target_CQ_param.curr_wirelen, target_CQ_param.C)
+			curr_C = get_capac_with_wire(params, target_CQ_param)
+			curr_Q = get_delay_with_wire(params, target_CQ_param)
 
 			solution_ways = [int] * num_of_childs
 			solution_ways[curr_target_child_index] = curr_CQ_param_index
@@ -211,20 +211,20 @@ def merge_childs(childs_CQ_params_arr, params: SchemParams, node: SteinerNode):
 				if other_CQ_params_arr == target_CQ_params_arr:
 					continue
 
-				params_C_more_than_Q = [CQ_param for CQ_param in other_CQ_params_arr if CQ_param.Q - get_wire_delay(params, CQ_param.curr_wirelen, CQ_param.C) >= curr_Q]
+				params_C_more_than_Q = [CQ_param for CQ_param in other_CQ_params_arr if get_delay_with_wire(params, CQ_param) >= curr_Q]
 
 				if len(params_C_more_than_Q) == 0:
 					have_solution = False
 					break # twice-up-break
 
 				# Choose best variant by C 
-				min_C = min(C_more_than_Q.C + params.C_w * C_more_than_Q.curr_wirelen for C_more_than_Q in params_C_more_than_Q)
-				min_index = [i for i in range(len(other_CQ_params_arr)) if (other_CQ_params_arr[i].C + params.C_w * other_CQ_params_arr[i].curr_wirelen) == min_C]
+				min_C = min(get_capac_with_wire(params, C_more_than_Q) for C_more_than_Q in params_C_more_than_Q)
+				min_index = [i for i in range(len(other_CQ_params_arr)) if get_capac_with_wire(params, other_CQ_params_arr[i]) == min_C]
 				print("min_index:", min_index)
 				min_index = min_index[0]
 
 
-				curr_C += other_CQ_params_arr[min_index].C + params.C_w * other_CQ_params_arr[min_index].curr_wirelen
+				curr_C += get_capac_with_wire(params, other_CQ_params_arr[min_index])
 				# maybe min?
 				max_prev_wirelen = max(max_prev_wirelen, other_CQ_params_arr[min_index].curr_wirelen)
 
@@ -580,17 +580,21 @@ if __name__ == "__main__":
 	params = bottom_up_order(tree.root, tech_params)
 
 	# Get index of max RAT
+	# There is final C and Q, don't need to recalculate
 	max_index = 0
-	max_RAT = params[0].Q - get_wire_delay(tech_params, params[0].curr_wirelen, params[0].C)
+	max_RAT = params[0].Q
 	# Need to delete options with same RAT
 	i = 0
 	for param in params:
-		if param.Q - get_wire_delay(tech_params, param.curr_wirelen, param.C + tech_params.C_w * param.curr_wirelen) >= max_RAT:
-			max_RAT = param.Q - get_wire_delay(tech_params, param.curr_wirelen, param.C + tech_params.C_w * param.curr_wirelen)
+		if param.Q >= max_RAT:
+			max_RAT = param.Q
 			max_index = i
 		i += 1
 
 	print("solutions:")
 	print(*params)
+	print("best solution index:", max_index)
 
 	dump_tree_to_json(tree, args.test_filename, max_index)
+
+# With intrinsic_delay = 0.4 - max in middle, all is ok
