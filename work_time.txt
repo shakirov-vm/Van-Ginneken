@@ -1,0 +1,4 @@
+20 50 200 500 1000 2000 4000 8000
+0.156 0.153 0.197 0.381 1.072 3.859 15.579 62.596
+
+# first raw is num length, second is time of work, So. without plot - it is O(n^2)

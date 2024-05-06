@@ -8,7 +8,6 @@ class SteinerNode:
 
 	def __init__(self, json_node, parent_node, path_to_parent):
 
-		print(json_node)
 		self.json = json_node
 		self.parent = parent_node
 		self.path_to_parent = path_to_parent
@@ -50,8 +49,6 @@ def fill_tree(parent: SteinerNode, vertices, edges):
 	curr_id = parent.json["id"]
 	# find all childs
 	edges_to_childs = [edge for edge in edges if edge["vertices"][0] == curr_id]
-#	print(edges_to_childs)
-#	print("\n")
 
 	for edge_to_child in edges_to_childs:
 
@@ -108,10 +105,6 @@ def calc_branch(node: SteinerNode, params: SchemParams, curr_solutions: [ParamSo
 
 	wire_len = get_wire_len(node.path_to_parent)
 
-	print("wire_len:", wire_len)
-	print("curr solutions in calc_branch:")
-	print(*curr_solutions)
-
 	init_size = len(curr_solutions)
 	edge_solutions = [[]] * init_size
 	edge_indexes = [i for i in range(len(curr_solutions))]
@@ -158,22 +151,8 @@ def calc_branch(node: SteinerNode, params: SchemParams, curr_solutions: [ParamSo
 
 		# Don't update C and Q on wires because don't null curr_wirelen
 
-	print("edge solutions:", len(edge_solutions))
-	print("indexes:", len(edge_indexes))
-
-	for i in range(len(edge_solutions)):
-		print("i-th sol:", i, "child:", edge_indexes[i], ":", end = " ")
-		for j in range(len(edge_solutions[i])):
-			if edge_solutions[i][j] == 1:
-				print(j, end = " ")
-		print("")
-
-	print("curr solutions after calculation in calc_branch:")
-	print(*curr_solutions)
-
 	node.options_to_parent = edge_solutions
 	node.num_option_from_child = edge_indexes
-#	print(node.num_option_from_child)
 
 	return curr_solutions
 
@@ -182,9 +161,6 @@ def merge_childs(childs_CQ_params_arr, params: SchemParams, node: SteinerNode):
 	num_of_childs = len(node.childs)
 
 	solutions = []
-
-	print("\n")
-	print("num_of_childs: ", num_of_childs)
 
 	solution_index = 0
 	
@@ -217,12 +193,10 @@ def merge_childs(childs_CQ_params_arr, params: SchemParams, node: SteinerNode):
 					have_solution = False
 					break # twice-up-break
 
-				# Choose best variant by C 
+				# Choose best variant by capacity
 				min_C = min(get_capac_with_wire(params, C_more_than_Q) for C_more_than_Q in params_C_more_than_Q)
 				min_index = [i for i in range(len(other_CQ_params_arr)) if get_capac_with_wire(params, other_CQ_params_arr[i]) == min_C]
-				print("min_index:", min_index)
 				min_index = min_index[0]
-
 
 				curr_C += get_capac_with_wire(params, other_CQ_params_arr[min_index])
 				# maybe min?
@@ -235,12 +209,9 @@ def merge_childs(childs_CQ_params_arr, params: SchemParams, node: SteinerNode):
 
 			solutions.append(ParamSolution(curr_C, curr_Q, max_prev_wirelen))
 
-#			print("in node", node.json["id"], "on index", solution_index, ":", solution_ways)
 			node.options_from_merge.append(solution_ways) # must be solution_index
 
 			solution_index += 1
-
-#	print(node.options_from_merge)
 
 	if len(solutions) != solution_index:
 		print("\nPANIC solution size don't equal solution index\n")
@@ -257,16 +228,12 @@ def bottom_up_order(node: SteinerNode, tech_params: SchemParams):
 		solutions.append(calc_branch(child, tech_params, bottom_up_order(child, tech_params)))
 
 	solved = merge_childs(solutions, tech_params, node)
-	# print(*solved)
-	print("from node", node.json["id"], ", solutions:", len(solved))
 
 	return solved
 
 def get_buffer_coords(node: SteinerNode, index):
 
 	edges = node.path_to_parent
-
-#	print("edges:", edges)
 
 	num_segments = len(edges)
 
@@ -309,14 +276,10 @@ def get_curr_edge_buffers(node: SteinerNode, solution_id):
 
 	wire_len = get_wire_len(node.path_to_parent)
 
-	print("node:", node.json)
-#	solution_id -= 10
-	print("solution_id:", solution_id)
 	# Check start and end
 	for i in range(wire_len):
 		if node.options_to_parent[solution_id][i] == 1:
 			buffers.append(get_buffer_coords(node, i))
-	print("buffers:", buffers)
 
 	return buffers
 
@@ -361,17 +324,8 @@ def add_started_nodes(node_array, node):
 
 	node_array.append(node.json)
 
-	print(node.json)
-
 	for child in node.childs:
 		add_started_nodes(node_array, child)
-
-class EdgeBufferAndSplit:
-
-	def __init__(self): 
-
-		self.buffers = []
-		self.vertices = []
 
 def get_curr_edge_split(node: SteinerNode, curr_vert_index, curr_edge_index, edges_array, buffers_places):
 
@@ -559,7 +513,6 @@ def dump_tree_to_json(tree, filename, solution_id):
 
 	start_index = len(node)
 
-	print("BEFORE BUFFERS PRINTING")
 	get_nodes_and_edges(node, edge, start_index, 0, tree.root.childs[0], tree.root.options_from_merge[solution_id][0])
 
 	with open("calculated_" + filename, 'w') as file:
@@ -591,9 +544,7 @@ if __name__ == "__main__":
 			max_index = i
 		i += 1
 
-	print("solutions:")
-	print(*params)
-	print("best solution index:", max_index)
+	print("Best delay: ", 800 - max_RAT)
 
 	dump_tree_to_json(tree, args.test_filename, max_index)
 
