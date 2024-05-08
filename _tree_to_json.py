@@ -2,6 +2,8 @@
 from _steiner_node import *
 from _utils import *
 
+from pathlib import Path as path
+
 def add_started_nodes(node_array, node):
 
 	node_array.append(node.json)
@@ -215,9 +217,8 @@ def dump_tree_to_json(tree, filename, solution_id):
 
 	get_nodes_and_edges(node, edge, start_index, 0, tree.root.childs[0], tree.root.childs_options[solution_id][0])
 
-	# Is it work for Win?
-	out_filename = (filename.rsplit(".json", 1)[0] + "_out.json").split("/")[-1]
-	# change to os.path?
+	# Must work on Windows
+	out_filename = path(filename).name.rsplit(".json", 1)[0] + "_out.json"
 
 	with open(out_filename, 'w') as file:
 	    json.dump({"node" : node, "edge" : edge}, file, sort_keys = False, indent = 4)
