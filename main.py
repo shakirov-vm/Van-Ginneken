@@ -16,8 +16,6 @@ def fill_tree(parent: SteinerNode, vertices, edges):
 	curr_id = parent.json["id"]
 	# find all childs
 	edges_to_childs = [edge for edge in edges if edge["vertices"][0] == curr_id]
-#	print(edges_to_childs)
-#	print("\n")
 
 	for edge_to_child in edges_to_childs:
 
@@ -41,8 +39,6 @@ def bottom_up_order(node: SteinerNode):
 		solutions.append(child.calc_branch(bottom_up_order(child)))
 
 	solved = node.merge_childs(solutions)
-	# print(*solved)
-#	print("from node", node.json["id"], ", solutions:", len(solved))
 
 	return solved
 
@@ -108,11 +104,6 @@ if __name__ == "__main__":
 			max_RAT = param.Q
 			max_index = i
 		i += 1
-
-	print("solutions:")
-	print(*params)
-	print("best solution index:", max_index)
-	print("best solution:", params[max_index])
 
 	print("Best delay: ", 800 - max_RAT)
 

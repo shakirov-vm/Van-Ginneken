@@ -1,8 +1,8 @@
 {
 	"node": [
 		{ "id": 0, "x": 15, "y": 1, "type": "t", "name": "z1", "capacitance": 1.5, "rat": 800.0 },
-		{ "id": 1, "x": 15, "y": 50, "type": "b", "name": "buf1x" } ],
+		{ "id": 1, "x": 15, "y": 6400, "type": "b", "name": "buf1x" } ],
 	"edge": [
-		{ "id": 0, "vertices": [1,0], "segments": [ [15,50], [15,1] ] }
+		{ "id": 0, "vertices": [1,0], "segments": [ [15,6400], [15,1] ] }
 	]
 }

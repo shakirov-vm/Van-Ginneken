@@ -73,7 +73,6 @@ def get_curr_edge_split(node: SteinerNode, curr_vert_index, curr_edge_index, edg
 		# starting point - #2, middle - #1, end - #0
 		if num_segments != 3:
 			print("PANIC, num_segments is not 3, but must be! It is", num_segments)
-			print(segments)
 
 		curr_len = 0
 

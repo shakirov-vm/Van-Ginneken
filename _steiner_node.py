@@ -88,33 +88,15 @@ class SteinerNode:
 			cs_buf = ParamSolution(self.tech_params.C_b, curr_best_Q - get_buff_delay(self.tech_params, curr_best_C), 0)
 			curr_solutions.append(cs_buf)
 
-			print(i, " solutions:")
-			print("curr best:")
-			print("C:", curr_best_C, "; Q:", curr_best_Q, "; len:", cs_best_to_buf.curr_wirelen)
-			print("other:")
 			for cs in curr_solutions:
 
 				curr_Q = get_delay_with_wire(self.tech_params, cs)
 				curr_C = get_capac_with_wire(self.tech_params, cs)
-				print("C:", curr_C, "; Q:", curr_Q, "; len:", cs.curr_wirelen)
-			print("\n")
-#			print(*curr_solutions)
 
 			# Don't update C and Q on wires because don't null curr_wirelen
 
-		for i in range(len(edge_solutions)):
-			print("i-th sol:", i, "child:", edge_indexes[i], ":", end = " ")
-			for j in range(len(edge_solutions[i])):
-				if edge_solutions[i][j] == 1:
-					print(j, end = " ")
-			print("")
-
-#		print("curr solutions after calculation in calc_branch:")
-#		print(*curr_solutions)
-
 		self.edge_buf_options = edge_solutions
 		self.edge_buf_to_childs_num = edge_indexes
-	#	print(self.edge_buf_to_childs_num)
 
 		return curr_solutions
 
@@ -158,7 +140,6 @@ class SteinerNode:
 					# Choose best variant by C 
 					min_C = min(get_capac_with_wire(self.tech_params, C_more_than_Q) for C_more_than_Q in params_C_more_than_Q)
 					min_index = [i for i in range(len(other_CQ_params_arr)) if get_capac_with_wire(self.tech_params, other_CQ_params_arr[i]) == min_C]
-#					print("min_index:", min_index)
 					min_index = min_index[0]
 
 					curr_C += get_capac_with_wire(self.tech_params, other_CQ_params_arr[min_index])
@@ -172,12 +153,9 @@ class SteinerNode:
 
 				solutions.append(ParamSolution(curr_C, curr_Q, max_prev_wirelen))
 
-	#			print("in self", self.json["id"], "on index", solution_index, ":", solution_ways)
 				self.childs_options.append(solution_ways) # must be solution_index
 
 				solution_index += 1
-
-	#	print(self.childs_options)
 
 		if len(solutions) != solution_index:
 			print("\nPANIC solution size don't equal solution index\n")
@@ -187,8 +165,6 @@ class SteinerNode:
 	def get_buffer_coords(self, index):
 
 		edges = self.edge_to_parent
-
-	#	print("edges:", edges)
 
 		num_segments = len(edges)
 
@@ -231,14 +207,10 @@ class SteinerNode:
 
 		wire_len = get_wire_len(self.edge_to_parent)
 
-#		print("node:", self.json)
-	#	solution_id -= 10
-#		print("solution_id:", solution_id)
 		# Check start and end
 		for i in range(wire_len):
 			if self.edge_buf_options[solution_id][i] == 1:
 				buffers.append(self.get_buffer_coords(i))
-#		print("buffers:", buffers)
 
 		return buffers
 
