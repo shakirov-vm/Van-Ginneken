@@ -4,6 +4,8 @@ from collections import deque
 import numpy as np
 from copy import copy
 
+from _utils import *
+
 class SteinerNode:
 
 	def __init__(self, json_node, parent_node, edge_to_parent, params):
@@ -34,20 +36,78 @@ class SteinerNode:
 
 		return str(self.json)
 
-class SchemParams:
+	def calc_branch(self, curr_solutions: [ParamSolution]): # Q - RAT
 
-	def __init__(self, tech_file):
+		wire_len = get_wire_len(self.edge_to_parent)
 
-		json_data = None
-		with open(tech_file, "r") as file:
-			json_data = json.load(file)
+		print("wire_len:", wire_len)
+		print("curr solutions in calc_branch:")
+		print(*curr_solutions)
 
-		self.R_w = json_data["technology"]["unit_wire_resistance"]
-		self.C_w = json_data["technology"]["unit_wire_capacitance"]
+		init_size = len(curr_solutions)
+		edge_solutions = [[]] * init_size
+		edge_indexes = [i for i in range(len(curr_solutions))]
 
-		self.R_b = json_data["module"][0]["input"][0]["R"]
-		self.C_b = json_data["module"][0]["input"][0]["C"]
-		self.D_b = json_data["module"][0]["input"][0]["intrinsic_delay"]
+		# need index - from input curr_solutions - for edge_indexes and index for dynamically changed edge_solutions
+		# [start; finish); start from terminals
+		for i in range(wire_len):
+
+			cs_best_to_buf = curr_solutions[0]
+			cs_index = 0
+
+			for j in range(len(curr_solutions)):
+
+				# set wire
+				cs = curr_solutions[j]
+				edge_solutions[j].append(0)
+
+				cs.curr_wirelen += 1
+				curr_Q = get_delay_with_wire(self.tech_params, cs)
+				curr_C = get_capac_with_wire(self.tech_params, cs)
+
+				curr_best_Q = get_delay_with_wire(self.tech_params, cs_best_to_buf)
+				curr_best_C = get_capac_with_wire(self.tech_params, cs_best_to_buf)
+
+				bufferized_curr_Q = curr_Q - get_buff_delay(self.tech_params, curr_C)
+				bufferized_best_Q = curr_best_Q - get_buff_delay(self.tech_params, curr_best_C)
+
+				# minimal Q is best variant
+				if bufferized_curr_Q <= bufferized_best_Q:
+					cs_best_to_buf = cs
+					cs_index = j
+
+			new_edge_solution = copy(edge_solutions[cs_index])
+			new_edge_solution[-1] = 1
+
+			edge_solutions.append(new_edge_solution)
+			edge_indexes.append(edge_indexes[cs_index])
+
+			curr_best_Q = get_delay_with_wire(self.tech_params, cs_best_to_buf)
+			curr_best_C = get_capac_with_wire(self.tech_params, cs_best_to_buf) # With wire?
+
+			cs_buf = ParamSolution(self.tech_params.C_b, curr_best_Q - get_buff_delay(self.tech_params, curr_best_C), 0)
+			curr_solutions.append(cs_buf)
+
+			# Don't update C and Q on wires because don't null curr_wirelen
+
+		print("edge solutions:", len(edge_solutions))
+		print("indexes:", len(edge_indexes))
+
+		for i in range(len(edge_solutions)):
+			print("i-th sol:", i, "child:", edge_indexes[i], ":", end = " ")
+			for j in range(len(edge_solutions[i])):
+				if edge_solutions[i][j] == 1:
+					print(j, end = " ")
+			print("")
+
+		print("curr solutions after calculation in calc_branch:")
+		print(*curr_solutions)
+
+		self.edge_buf_options = edge_solutions
+		self.edge_buf_to_childs_num = edge_indexes
+	#	print(node.edge_buf_to_childs_num)
+
+		return curr_solutions
 
 def fill_tree(parent: SteinerNode, vertices, edges):
 
@@ -68,121 +128,6 @@ def fill_tree(parent: SteinerNode, vertices, edges):
 		child = SteinerNode(child_json, parent, edge_to_child["segments"], parent.tech_params)
 
 		fill_tree(child, vertices, edges)
-
-def get_wire_len(edge_to_parent):
-
-	num_segments = len(edge_to_parent)
-	wire_length = 0
-
-	wire_length += abs(edge_to_parent[0][0] - edge_to_parent[1][0])
-	wire_length += abs(edge_to_parent[0][1] - edge_to_parent[1][1])
-
-	if num_segments == 3:
-		wire_length += abs(edge_to_parent[1][0] - edge_to_parent[2][0])
-		wire_length += abs(edge_to_parent[1][1] - edge_to_parent[2][1])
-
-	return wire_length
-
-class ParamSolution:
-
-	def __init__(self, C, Q, previous_wire_len):
-
-		self.C = C
-		self.Q = Q
-		self.curr_wirelen = previous_wire_len
-
-	def __str__(self):
-
-		return f"C: {self.C}, Q: {self.Q}, CW: {self.curr_wirelen}\n"
-
-def get_wire_delay(params: SchemParams, wirelen, C_in):
-
-	return (wirelen ** 2) * params.C_w * params.R_w / 2 + params.R_w * wirelen * (C_in + params.C_w * wirelen)
-
-def get_capac_with_wire(params: SchemParams, CQ_sol: ParamSolution):
-
-	return CQ_sol.C + params.C_w * CQ_sol.curr_wirelen
-
-def get_delay_with_wire(params: SchemParams, CQ_sol: ParamSolution):
-
-	return CQ_sol.Q - get_wire_delay(params, CQ_sol.curr_wirelen, get_capac_with_wire(params, CQ_sol))
-
-def get_buff_delay(params: SchemParams, C_in):
-
-	return params.R_b * C_in + params.D_b
-
-def calc_branch(node: SteinerNode, curr_solutions: [ParamSolution]): # Q - RAT
-
-	wire_len = get_wire_len(node.edge_to_parent)
-
-	print("wire_len:", wire_len)
-	print("curr solutions in calc_branch:")
-	print(*curr_solutions)
-
-	init_size = len(curr_solutions)
-	edge_solutions = [[]] * init_size
-	edge_indexes = [i for i in range(len(curr_solutions))]
-
-	# need index - from input curr_solutions - for edge_indexes and index for dynamically changed edge_solutions
-	# [start; finish); start from terminals
-	for i in range(wire_len):
-
-		cs_best_to_buf = curr_solutions[0]
-		cs_index = 0
-
-		for j in range(len(curr_solutions)):
-
-			# set wire
-			cs = curr_solutions[j]
-			edge_solutions[j].append(0)
-
-			cs.curr_wirelen += 1
-			curr_Q = get_delay_with_wire(node.tech_params, cs)
-			curr_C = get_capac_with_wire(node.tech_params, cs)
-
-			curr_best_Q = get_delay_with_wire(node.tech_params, cs_best_to_buf)
-			curr_best_C = get_capac_with_wire(node.tech_params, cs_best_to_buf)
-
-			bufferized_curr_Q = curr_Q - get_buff_delay(node.tech_params, curr_C)
-			bufferized_best_Q = curr_best_Q - get_buff_delay(node.tech_params, curr_best_C)
-
-			# minimal Q is best variant
-			if bufferized_curr_Q <= bufferized_best_Q:
-				cs_best_to_buf = cs
-				cs_index = j
-
-		new_edge_solution = copy(edge_solutions[cs_index])
-		new_edge_solution[-1] = 1
-
-		edge_solutions.append(new_edge_solution)
-		edge_indexes.append(edge_indexes[cs_index])
-
-		curr_best_Q = get_delay_with_wire(node.tech_params, cs_best_to_buf)
-		curr_best_C = get_capac_with_wire(node.tech_params, cs_best_to_buf) # With wire?
-
-		cs_buf = ParamSolution(node.tech_params.C_b, curr_best_Q - get_buff_delay(node.tech_params, curr_best_C), 0)
-		curr_solutions.append(cs_buf)
-
-		# Don't update C and Q on wires because don't null curr_wirelen
-
-	print("edge solutions:", len(edge_solutions))
-	print("indexes:", len(edge_indexes))
-
-	for i in range(len(edge_solutions)):
-		print("i-th sol:", i, "child:", edge_indexes[i], ":", end = " ")
-		for j in range(len(edge_solutions[i])):
-			if edge_solutions[i][j] == 1:
-				print(j, end = " ")
-		print("")
-
-	print("curr solutions after calculation in calc_branch:")
-	print(*curr_solutions)
-
-	node.edge_buf_options = edge_solutions
-	node.edge_buf_to_childs_num = edge_indexes
-#	print(node.edge_buf_to_childs_num)
-
-	return curr_solutions
 
 def merge_childs(childs_CQ_params_arr, node: SteinerNode):
 
@@ -261,7 +206,7 @@ def bottom_up_order(node: SteinerNode):
 	solutions = []
 
 	for child in node.childs:
-		solutions.append(calc_branch(child, bottom_up_order(child)))
+		solutions.append(child.calc_branch(bottom_up_order(child)))
 
 	solved = merge_childs(solutions, node)
 	# print(*solved)
