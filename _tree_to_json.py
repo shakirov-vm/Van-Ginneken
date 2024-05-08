@@ -160,6 +160,16 @@ def get_curr_edge_split(node: SteinerNode, curr_vert_index, curr_edge_index, edg
 			curr_len += 1
 		# TODO: Add last edge like in case with 2 segments
 
+		if curr_len >= first_segment_len:
+
+			len_sign = int(np.sign(segments[0][0] - segments[1][0]))
+			new_edge = {"id": curr_edge_index, 
+						"vertices": [ curr_starting_vert, node.parent.json["id"]],
+						"segments": [ [curr_x, curr_y], [segments[0][0], segments[0][1]]]}
+
+			edges_array.append(new_edge)
+			curr_edge_index += 1
+
 	return curr_edge_index
 
 def get_nodes_and_edges(nodes_array, edges_array, curr_vert_index, curr_edge_index, node, edge_solution_id):

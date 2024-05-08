@@ -84,6 +84,7 @@ class SteinerNode:
 			curr_best_Q = get_delay_with_wire(self.tech_params, cs_best_to_buf)
 			curr_best_C = get_capac_with_wire(self.tech_params, cs_best_to_buf) # With wire? - Yes
 
+			# Start wirelen is 0 there
 			cs_buf = ParamSolution(self.tech_params.C_b, curr_best_Q - get_buff_delay(self.tech_params, curr_best_C), 0)
 			curr_solutions.append(cs_buf)
 

@@ -31,7 +31,9 @@ def fill_tree(parent: SteinerNode, vertices, edges):
 def bottom_up_order(node: SteinerNode):
 
 	if node.json["type"] == "t":
-		return [ParamSolution(node.json["capacitance"], node.json["rat"], 0)]
+		# Start wirelen is 1 because of we start from driver and go to terminals
+		# And We can't set buffer in starting point, but can insert in end point => 1 there
+		return [ParamSolution(node.json["capacitance"], node.json["rat"], 1)]
 
 	solutions = []
 
