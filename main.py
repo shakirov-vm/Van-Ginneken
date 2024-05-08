@@ -105,8 +105,6 @@ if __name__ == "__main__":
 			max_index = i
 		i += 1
 
-	print("Best delay: ", 800 - max_RAT)
-
 	dump_tree_to_json(tree, args.test_filename, max_index)
 
 # With intrinsic_delay = 0.4 - max in middle, all is ok
