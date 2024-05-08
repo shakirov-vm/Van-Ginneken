@@ -33,9 +33,6 @@ def get_curr_edge_split(node: SteinerNode, curr_vert_index, curr_edge_index, edg
 
 		for i in range(wire_len):
 
-			if i == wire_len - 1:
-				curr_end_vert = node.json["id"]
-
 			if buffers_places[i] == 1:
 
 				if segments[1][0] == segments[0][0]:
@@ -52,7 +49,6 @@ def get_curr_edge_split(node: SteinerNode, curr_vert_index, curr_edge_index, edg
 					curr_x += len_sign * curr_len
 
 				edges_array.append(new_edge)
-				print("start:", curr_starting_vert, ", end:", curr_end_vert)
 				
 				curr_starting_vert = curr_end_vert
 				curr_end_vert += 1
@@ -85,10 +81,7 @@ def get_curr_edge_split(node: SteinerNode, curr_vert_index, curr_edge_index, edg
 
 		for i in range(wire_len):
 
-			if i == wire_len - 1:
-				curr_end_vert = node.json["id"]
-
-			# TODO: Error? In case of 3 segments? In second part?
+			# absolute len from start of edge
 			curr_start = abs(curr_x - segments[2][0]) + abs(curr_y - segments[2][1])
 			curr_end = curr_start + curr_len
 
@@ -110,14 +103,7 @@ def get_curr_edge_split(node: SteinerNode, curr_vert_index, curr_edge_index, edg
 						curr_x += len_sign * curr_len
 				elif curr_start < first_segment_len and curr_end > first_segment_len:
 
-					middle_point = None
-					if segments[2][0] == segments[1][0]:
-						len_sign = int(np.sign(segments[1][1] - segments[2][1]))
-						middle_point = [segments[2][0], segments[2][1] + len_sign * first_segment_len]
-					else:
-						len_sign = int(np.sign(segments[1][0] - segments[2][0]))
-						middle_point = [segments[2][0] + len_sign * first_segment_len, segments[2][1]]
-
+					middle_point = segments[1]
 					second_part_len = curr_end - first_segment_len
 
 					if segments[1][0] == segments[0][0]:
@@ -125,15 +111,16 @@ def get_curr_edge_split(node: SteinerNode, curr_vert_index, curr_edge_index, edg
 						new_edge = {"id": curr_edge_index,
 									"vertices": [ curr_starting_vert, curr_end_vert], 
 									"segments": [ [curr_x, curr_y], middle_point, [segments[1][0], segments[1][1] + len_sign * second_part_len]]}
-						curr_y += len_sign * curr_len
+						curr_y = segments[1][1] + len_sign * second_part_len
+						curr_x = segments[1][0]
 					else:
 						len_sign = int(np.sign(segments[0][0] - segments[1][0]))
 						new_edge = {"id": curr_edge_index, 
 									"vertices": [ curr_starting_vert, curr_end_vert],
 									"segments": [ [curr_x, curr_y], middle_point, [segments[1][0] + len_sign * second_part_len, segments[1][1]]]}
-						curr_x += len_sign * curr_len
+						curr_x = segments[1][0] + len_sign * second_part_len
+						curr_y = segments[1][1]
 				else:
-
 					if segments[1][0] == segments[0][0]:
 						len_sign = int(np.sign(segments[0][1] - segments[1][1]))
 						new_edge = {"id": curr_edge_index, 
@@ -148,7 +135,6 @@ def get_curr_edge_split(node: SteinerNode, curr_vert_index, curr_edge_index, edg
 						curr_x += len_sign * curr_len
 
 				edges_array.append(new_edge)
-				print("start:", curr_starting_vert, ", end:", curr_end_vert)
 				
 				curr_starting_vert = curr_end_vert
 				curr_end_vert += 1
@@ -158,14 +144,33 @@ def get_curr_edge_split(node: SteinerNode, curr_vert_index, curr_edge_index, edg
 				curr_len = 0
 
 			curr_len += 1
-		# TODO: Add last edge like in case with 2 segments
 
-		if curr_len >= first_segment_len:
+		# abs from start
+		curr_start = abs(curr_x - segments[2][0]) + abs(curr_y - segments[2][1])
+		if curr_start > first_segment_len:
 
 			len_sign = int(np.sign(segments[0][0] - segments[1][0]))
 			new_edge = {"id": curr_edge_index, 
 						"vertices": [ curr_starting_vert, node.parent.json["id"]],
 						"segments": [ [curr_x, curr_y], [segments[0][0], segments[0][1]]]}
+
+			edges_array.append(new_edge)
+			curr_edge_index += 1
+		else:
+
+			middle_point = segments[1]
+			end_point = segments[0]
+
+			if segments[1][0] == segments[0][0]:
+				len_sign = int(np.sign(segments[0][1] - segments[1][1]))
+				new_edge = {"id": curr_edge_index,
+							"vertices": [ curr_starting_vert, node.parent.json["id"]], 
+							"segments": [ [curr_x, curr_y], middle_point, end_point]}
+			else:
+				len_sign = int(np.sign(segments[0][0] - segments[1][0]))
+				new_edge = {"id": curr_edge_index, 
+							"vertices": [ curr_starting_vert, node.parent.json["id"]],
+							"segments": [ [curr_x, curr_y], middle_point, end_point]}
 
 			edges_array.append(new_edge)
 			curr_edge_index += 1
@@ -211,6 +216,7 @@ def dump_tree_to_json(tree, filename, solution_id):
 
 	# Is it work for Win?
 	out_filename = (filename.rsplit(".json", 1)[0] + "_out.json").split("/")[-1]
+	# change to os.path?
 
 	with open(out_filename, 'w') as file:
 	    json.dump({"node" : node, "edge" : edge}, file, sort_keys = False, indent = 4)
