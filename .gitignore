@@ -1,3 +1,4 @@
 calculated*
 test*
 __pycache__/
+*_out.json
