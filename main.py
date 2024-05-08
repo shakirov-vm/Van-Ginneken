@@ -110,6 +110,7 @@ if __name__ == "__main__":
 	print("solutions:")
 	print(*params)
 	print("best solution index:", max_index)
+	print("best solution:", params[max_index])
 
 	print("Best delay: ", 800 - max_RAT)
 

@@ -70,8 +70,8 @@ class SteinerNode:
 				bufferized_curr_Q = curr_Q - get_buff_delay(self.tech_params, curr_C)
 				bufferized_best_Q = curr_best_Q - get_buff_delay(self.tech_params, curr_best_C)
 
-				# minimal Q is best variant
-				if bufferized_curr_Q <= bufferized_best_Q:
+				# maximal Q is best variant
+				if bufferized_curr_Q >= bufferized_best_Q:
 					cs_best_to_buf = cs
 					cs_index = j
 
@@ -82,19 +82,31 @@ class SteinerNode:
 			edge_indexes.append(edge_indexes[cs_index])
 
 			curr_best_Q = get_delay_with_wire(self.tech_params, cs_best_to_buf)
-			curr_best_C = get_capac_with_wire(self.tech_params, cs_best_to_buf) # With wire?
+			curr_best_C = get_capac_with_wire(self.tech_params, cs_best_to_buf) # With wire? - Yes
 
 			cs_buf = ParamSolution(self.tech_params.C_b, curr_best_Q - get_buff_delay(self.tech_params, curr_best_C), 0)
 			curr_solutions.append(cs_buf)
 
+			print(i, " solutions:")
+			print("curr best:")
+			print("C:", curr_best_C, "; Q:", curr_best_Q, "; len:", cs_best_to_buf.curr_wirelen)
+			print("other:")
+			for cs in curr_solutions:
+
+				curr_Q = get_delay_with_wire(self.tech_params, cs)
+				curr_C = get_capac_with_wire(self.tech_params, cs)
+				print("C:", curr_C, "; Q:", curr_Q, "; len:", cs.curr_wirelen)
+			print("\n")
+#			print(*curr_solutions)
+
 			# Don't update C and Q on wires because don't null curr_wirelen
 
-#		for i in range(len(edge_solutions)):
-#			print("i-th sol:", i, "child:", edge_indexes[i], ":", end = " ")
-#			for j in range(len(edge_solutions[i])):
-#				if edge_solutions[i][j] == 1:
-#					print(j, end = " ")
-#			print("")
+		for i in range(len(edge_solutions)):
+			print("i-th sol:", i, "child:", edge_indexes[i], ":", end = " ")
+			for j in range(len(edge_solutions[i])):
+				if edge_solutions[i][j] == 1:
+					print(j, end = " ")
+			print("")
 
 #		print("curr solutions after calculation in calc_branch:")
 #		print(*curr_solutions)
