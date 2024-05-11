@@ -40,14 +40,14 @@ def get_curr_edge_split(node: SteinerNode, curr_vert_index, curr_edge_index, edg
 				if segments[1][0] == segments[0][0]:
 					len_sign = int(np.sign(segments[0][1] - segments[1][1]))
 					new_edge = {"id": curr_edge_index, 
-								"vertices": [ curr_starting_vert, curr_end_vert], 
-								"segments": [ [curr_x, curr_y], [curr_x, curr_y + len_sign * curr_len]]}
+								"vertices": [ curr_end_vert, curr_starting_vert],
+								"segments": [ [curr_x, curr_y + len_sign * curr_len], [curr_x, curr_y]]}
 					curr_y += len_sign * curr_len
 				else:
 					len_sign = int(np.sign(segments[0][0] - segments[1][0]))
 					new_edge = {"id": curr_edge_index, 
-								"vertices": [ curr_starting_vert, curr_end_vert], 
-								"segments": [ [curr_x, curr_y], [curr_x + len_sign * curr_len, curr_y]]}
+								"vertices": [ curr_end_vert, curr_starting_vert],
+								"segments": [ [curr_x + len_sign * curr_len, curr_y], [curr_x, curr_y]]}
 					curr_x += len_sign * curr_len
 
 				edges_array.append(new_edge)
@@ -63,8 +63,8 @@ def get_curr_edge_split(node: SteinerNode, curr_vert_index, curr_edge_index, edg
 
 		len_sign = int(np.sign(segments[0][0] - segments[1][0]))
 		new_edge = {"id": curr_edge_index, 
-					"vertices": [ curr_starting_vert, node.parent.json["id"]],
-					"segments": [ [curr_x, curr_y], [segments[0][0], segments[0][1]]]}
+					"vertices": [ node.parent.json["id"], curr_starting_vert],
+					"segments": [ [segments[0][0], segments[0][1]], [curr_x, curr_y]]}
 
 		edges_array.append(new_edge)
 		curr_edge_index += 1
@@ -94,14 +94,14 @@ def get_curr_edge_split(node: SteinerNode, curr_vert_index, curr_edge_index, edg
 					if segments[2][0] == segments[1][0]:
 						len_sign = int(np.sign(segments[1][1] - segments[2][1]))
 						new_edge = {"id": curr_edge_index, 
-									"vertices": [ curr_starting_vert, curr_end_vert], 
-									"segments": [ [curr_x, curr_y], [curr_x, curr_y + len_sign * curr_len]]}
+									"vertices": [ curr_end_vert, curr_starting_vert],
+									"segments": [ [curr_x, curr_y + len_sign * curr_len], [curr_x, curr_y]]}
 						curr_y += len_sign * curr_len
 					else:
 						len_sign = int(np.sign(segments[1][0] - segments[2][0]))
 						new_edge = {"id": curr_edge_index, 
-									"vertices": [ curr_starting_vert, curr_end_vert], 
-									"segments": [ [curr_x, curr_y], [curr_x + len_sign * curr_len, curr_y]]}
+									"vertices": [ curr_end_vert, curr_starting_vert],
+									"segments": [ [curr_x + len_sign * curr_len, curr_y], [curr_x, curr_y]]}
 						curr_x += len_sign * curr_len
 				elif curr_start < first_segment_len and curr_end > first_segment_len:
 
@@ -111,29 +111,29 @@ def get_curr_edge_split(node: SteinerNode, curr_vert_index, curr_edge_index, edg
 					if segments[1][0] == segments[0][0]:
 						len_sign = int(np.sign(segments[0][1] - segments[1][1]))
 						new_edge = {"id": curr_edge_index,
-									"vertices": [ curr_starting_vert, curr_end_vert], 
-									"segments": [ [curr_x, curr_y], middle_point, [segments[1][0], segments[1][1] + len_sign * second_part_len]]}
+									"vertices": [ curr_end_vert, curr_starting_vert],
+									"segments": [ [segments[1][0], segments[1][1] + len_sign * second_part_len], middle_point, [curr_x, curr_y]]}
 						curr_y = segments[1][1] + len_sign * second_part_len
 						curr_x = segments[1][0]
 					else:
 						len_sign = int(np.sign(segments[0][0] - segments[1][0]))
 						new_edge = {"id": curr_edge_index, 
-									"vertices": [ curr_starting_vert, curr_end_vert],
-									"segments": [ [curr_x, curr_y], middle_point, [segments[1][0] + len_sign * second_part_len, segments[1][1]]]}
+									"vertices": [ curr_end_vert, curr_starting_vert],
+									"segments": [ [segments[1][0] + len_sign * second_part_len, segments[1][1]], middle_point, [curr_x, curr_y]]}
 						curr_x = segments[1][0] + len_sign * second_part_len
 						curr_y = segments[1][1]
 				else:
 					if segments[1][0] == segments[0][0]:
 						len_sign = int(np.sign(segments[0][1] - segments[1][1]))
 						new_edge = {"id": curr_edge_index, 
-									"vertices": [ curr_starting_vert, curr_end_vert], 
-									"segments": [ [curr_x, curr_y], [curr_x, curr_y + len_sign * curr_len]]}
+									"vertices": [ curr_end_vert, curr_starting_vert],
+									"segments": [ [curr_x, curr_y + len_sign * curr_len], [curr_x, curr_y]]}
 						curr_y += len_sign * curr_len
 					else:
 						len_sign = int(np.sign(segments[0][0] - segments[1][0]))
 						new_edge = {"id": curr_edge_index, 
-									"vertices": [ curr_starting_vert, curr_end_vert], 
-									"segments": [ [curr_x, curr_y], [curr_x + len_sign * curr_len, curr_y]]}
+									"vertices": [ curr_end_vert, curr_starting_vert],
+									"segments": [ [curr_x + len_sign * curr_len, curr_y], [curr_x, curr_y]]}
 						curr_x += len_sign * curr_len
 
 				edges_array.append(new_edge)
@@ -153,8 +153,8 @@ def get_curr_edge_split(node: SteinerNode, curr_vert_index, curr_edge_index, edg
 
 			len_sign = int(np.sign(segments[0][0] - segments[1][0]))
 			new_edge = {"id": curr_edge_index, 
-						"vertices": [ curr_starting_vert, node.parent.json["id"]],
-						"segments": [ [curr_x, curr_y], [segments[0][0], segments[0][1]]]}
+						"vertices": [ node.parent.json["id"], curr_starting_vert],
+						"segments": [ [segments[0][0], segments[0][1]], [curr_x, curr_y]]}
 
 			edges_array.append(new_edge)
 			curr_edge_index += 1
@@ -166,13 +166,13 @@ def get_curr_edge_split(node: SteinerNode, curr_vert_index, curr_edge_index, edg
 			if segments[1][0] == segments[0][0]:
 				len_sign = int(np.sign(segments[0][1] - segments[1][1]))
 				new_edge = {"id": curr_edge_index,
-							"vertices": [ curr_starting_vert, node.parent.json["id"]], 
-							"segments": [ [curr_x, curr_y], middle_point, end_point]}
+							"vertices": [ node.parent.json["id"], curr_starting_vert],
+							"segments": [ end_point, middle_point, [curr_x, curr_y]]}
 			else:
 				len_sign = int(np.sign(segments[0][0] - segments[1][0]))
 				new_edge = {"id": curr_edge_index, 
-							"vertices": [ curr_starting_vert, node.parent.json["id"]],
-							"segments": [ [curr_x, curr_y], middle_point, end_point]}
+							"vertices": [ node.parent.json["id"], curr_starting_vert],
+							"segments": [ end_point, middle_point, [curr_x, curr_y]]}
 
 			edges_array.append(new_edge)
 			curr_edge_index += 1
